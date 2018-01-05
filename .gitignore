@@ -1,0 +1,5 @@
+node_modules
+browserstack.json
+notes.md
+test/.cache
+test/dist

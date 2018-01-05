@@ -1,19 +1,77 @@
 {
-  "name": "idbstorage",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/stkao05/IDBStorage.git"
-  },
-  "author": "Steven Kao",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/stkao05/IDBStorage/issues"
-  },
-  "homepage": "https://github.com/stkao05/IDBStorage#readme"
+    "name": "idbstorage",
+    "version": "0.0.1",
+    "description": "IndexedDB as key-value storage",
+    "devDependencies": {
+        "babel-cli": "^6.26.0",
+        "babel-core": "^6.26.3",
+        "babel-polyfill": "^6.26.0",
+        "babel-preset-env": "^1.6.1",
+        "babelify": "^8.0.0",
+        "browserify": "^15.1.0",
+        "eslint": "^4.14.0",
+        "eslint-config-prettier": "^2.9.0",
+        "fake-indexeddb": "^2.0.4",
+        "jest": "^23.6.0",
+        "watchify": "^3.9.0"
+    },
+    "main": "dist/index.umd.js",
+    "module": "dist/index.esm.js",
+    "scripts": {
+        "lint": "eslint ./index.js",
+        "build-umd": "BABEL_ENV=umd babel index.js -o dist/index.umd.js",
+        "build-esm": "BABEL_ENV=esm babel index.js -o dist/index.esm.js",
+        "build": "npm run build-umd && npm run build-esm",
+        "pre-test": "browserify test/IDBStorage.spec.js -o test/IDBStorage.spec.dist.js -t babelify",
+        "test-watch": "watchify test/IDBStorage.spec.js -o test/IDBStorage.spec.dist.js -t babelify"
+    },
+    "babel": {
+        "presets": [
+            "env"
+        ]
+    },
+    "eslintConfig": {
+        "extends": [
+            "eslint:recommended",
+            "prettier"
+        ],
+        "env": {
+            "browser": true,
+            "node": true,
+            "jest": true,
+            "es6": true
+        },
+        "parserOptions": {
+            "ecmaVersion": 7,
+            "sourceType": "module"
+        },
+        "rules": {
+            "semi": [
+                "error",
+                "never"
+            ]
+        }
+    },
+    "jest": {
+        "testPathIgnorePatterns": [
+            "./test"
+        ]
+    },
+    "prettier": {
+        "printWidth": 80,
+        "tabWidth": 4,
+        "semi": false,
+        "trailingComma": "none",
+        "bracketSpacing": true
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/doist/IDBStorage"
+    },
+    "author": "Steven Kao",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/doist/IDBStorage/issues"
+    },
+    "homepage": "https://github.com/doist/IDBStorage#readme"
 }
