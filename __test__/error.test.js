@@ -1,13 +1,8 @@
 import IDBStorage from "../index"
 
-jest.mock("fake-indexeddb")
-
-const indexedDB = require("fake-indexeddb")
-window.indexedDB = indexedDB
-
 describe("Error handling when openning a IndexedDB connection", () => {
     beforeEach(() => {
-        jest.clearAllMocks()
+        window.indexedDB = jest.genMockFromModule("fake-indexeddb")
     })
 
     it("rejects calls when indexedDB.open() throw an error", () => {
@@ -36,5 +31,45 @@ describe("Error handling when openning a IndexedDB connection", () => {
         req.onerror(error)
 
         return expect(res).rejects.toEqual(error)
+    })
+
+    it("will try open connection again despite of previous failure", async () => {
+        expect.assertions(2)
+
+        const req = {}
+        indexedDB.open.mockReturnValue(req)
+
+        const db = new IDBStorage({ name: "jest" })
+        const res = db.setItem("foo", 1)
+
+        const error = new Error("test")
+        req.error = error
+        req.onerror(error)
+
+        await expect(res).rejects.toEqual(error)
+
+        window.indexedDB = require("fake-indexeddb") // make indexedDB functioning again
+        const res2 = db.setItem("foo", 1)
+        await expect(res2).resolves.toEqual(1)
+    })
+
+    it("reject when createObjectStore() results in an error", async () => {
+        expect.assertions(2)
+
+        const conn = {
+            createObjectStore: jest.fn().mockImplementation(() => {
+                throw new Error("InvalidStateError")
+            })
+        }
+        const req = { result: conn }
+        indexedDB.open.mockReturnValue(req)
+
+        const db = new IDBStorage({ name: "test_db" })
+        const r1 = db.setItem("foo", 1)
+
+        req.onupgradeneeded()
+        expect(conn.createObjectStore).toHaveBeenCalled()
+
+        await expect(r1).rejects.toEqual(new Error("InvalidStateError"))
     })
 })

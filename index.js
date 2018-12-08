@@ -30,12 +30,7 @@ export default class IDBStorage {
                 let failed = null
                 this.deferredTXs.forEach(({ resolve, reject, mode }) => {
                     if (failed) {
-                        reject(
-                            new Error(
-                                "Transction aborted due to earlier transaction failure",
-                                failed
-                            )
-                        )
+                        reject(failed)
                         return
                     }
 
@@ -48,13 +43,15 @@ export default class IDBStorage {
                     }
                 })
 
-                this.deferredTXs = []
+                if (failed) {
+                    this._close()
+                }
             })
             .catch(e => {
                 this.deferredTXs.forEach(({ reject }) => reject(e))
-                this.deferredTXs = []
             })
             .finally(() => {
+                this.deferredTXs = []
                 this.opening = false
             })
     }
