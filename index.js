@@ -4,92 +4,57 @@ export default class IDBStorage {
     constructor({ name = "IDBStorage" } = {}) {
         this.name = name
         this.db = null
-        this.opening = false
-        this.deferredTXs = []
+        this.opening = null
+        this.pendingTX = []
     }
 
-    _openIDBConn() {
-        if (this.opening) return
-
-        this.opening = true
-        openIDBConn(this.name, STORE_NAME)
-            .then(db => {
-                this.db = db
-                this.opening = false
-
-                /*
-                 * A version change event will be fired at an open connection if
-                 * an attempt is made to upgrade or delete the database.
-                 *
-                 * Here we close the connection to allow upgrade/delete proceed
-                 */
-                this.db.onversionchange = () => this._close()
-
-                // transactions must be created in order. if earlier transaction
-                // req fails to create, the later transactoin req should be failed
-                let failed = null
-                this.deferredTXs.forEach(({ resolve, reject, mode }) => {
-                    if (failed) {
-                        reject(failed)
-                        return
-                    }
-
-                    try {
-                        const tx = this.db.transaction([STORE_NAME], mode)
-                        resolve(tx)
-                    } catch (e) {
-                        failed = e
-                        reject(e)
-                    }
-                })
-
-                if (failed) {
-                    this._close()
-                }
-            })
-            .catch(e => {
-                this.deferredTXs.forEach(({ reject }) => reject(e))
-            })
-            .finally(() => {
-                this.deferredTXs = []
-                this.opening = false
-            })
-    }
-
-    /*
-     * Create transaction
-     *
-     * It will establish a new IDB connection if no connection
-     * has been establish yet.
-     */
-    _createTX(mode) {
+    transaction(mode) {
         return new Promise((resolve, reject) => {
-            if (!this.db) {
-                this.deferredTXs.push({ resolve, reject, mode })
-                if (this.opening) return
-
-                this._openIDBConn()
+            if (this.db) {
+                try {
+                    const tx = this.db.transaction([STORE_NAME], mode)
+                    resolve(tx)
+                } catch (e) {
+                    reject(e)
+                    this.close()
+                }
                 return
             }
 
-            try {
-                const tx = this.db.transaction([STORE_NAME], mode)
-                resolve(tx)
-            } catch (e) {
-                // Sometime IDB connection could be in a broken state
-                // (especially when connection has been opened for a
-                // long period of time) and error will be thrown
-                // in these cases, such as InvalidStateError.
-                // Here, we will discard the broken connection objection
-                // and create a new one here.
-                this.deferredTXs.push({ resolve, reject, mode })
-                this._close()
-                this._openIDBConn()
-            }
+            this.pendingTX.push([mode, resolve, reject])
+
+            if (this.opening) return
+
+            this.opening = openIDBConnection(this.name, STORE_NAME)
+                .then(db => {
+                    this.db = db
+                    this.db.onversionchange = () => this.close()
+
+                    let failed
+                    this.pendingTX.forEach(([mode, resolve, reject]) => {
+                        if (failed) return reject(failed)
+
+                        try {
+                            const tx = this.db.transaction([STORE_NAME], mode)
+                            resolve(tx)
+                        } catch (e) {
+                            failed = e
+                            reject(e)
+                            this.close()
+                        }
+                    })
+                })
+                .catch(e => {
+                    this.pendingTX.forEach(([, , reject]) => reject(e))
+                })
+                .finally(() => {
+                    this.opening = null
+                    this.pendingTX = []
+                })
         })
     }
 
-    _close() {
+    close() {
         if (!this.db) return
 
         this.db.close()
@@ -97,7 +62,7 @@ export default class IDBStorage {
     }
 
     setItem(key, value) {
-        return this._createTX("readwrite").then(tx => {
+        return this.transaction("readwrite").then(tx => {
             return new Promise((resolve, reject) => {
                 try {
                     const req = tx.objectStore(STORE_NAME).put(value, key)
@@ -112,7 +77,7 @@ export default class IDBStorage {
     }
 
     getItem(key) {
-        return this._createTX("readonly").then(tx => {
+        return this.transaction("readonly").then(tx => {
             return new Promise((resolve, reject) => {
                 try {
                     const req = tx.objectStore(STORE_NAME).get(key)
@@ -127,7 +92,7 @@ export default class IDBStorage {
     }
 
     removeItem(key) {
-        return this._createTX("readwrite").then(tx => {
+        return this.transaction("readwrite").then(tx => {
             return new Promise((resolve, reject) => {
                 try {
                     const req = tx.objectStore(STORE_NAME).delete(key)
@@ -142,7 +107,7 @@ export default class IDBStorage {
     }
 
     clear() {
-        return this._createTX("readwrite").then(tx => {
+        return this.transaction("readwrite").then(tx => {
             return new Promise((resolve, reject) => {
                 try {
                     const req = tx.objectStore(STORE_NAME).clear()
@@ -157,7 +122,7 @@ export default class IDBStorage {
     }
 
     length() {
-        return this._createTX("readonly").then(tx => {
+        return this.transaction("readonly").then(tx => {
             return new Promise((resolve, reject) => {
                 try {
                     const req = tx.objectStore(STORE_NAME).count()
@@ -191,7 +156,7 @@ export default class IDBStorage {
  * Open an IDB connection
  * @param {Promise} IDBDatabase
  */
-const openIDBConn = (name, storeName) => {
+const openIDBConnection = (name, storeName) => {
     return new Promise((resolve, reject) => {
         try {
             const req = window.indexedDB.open(name, 1)
