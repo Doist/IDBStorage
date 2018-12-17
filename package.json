@@ -1,11 +1,10 @@
 {
     "name": "idbstorage",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "IndexedDB as key-value storage",
     "devDependencies": {
         "babel-cli": "^6.26.0",
         "babel-core": "^6.26.3",
-        "babel-polyfill": "^6.26.0",
         "babel-preset-env": "^1.6.1",
         "babelify": "^8.0.0",
         "browserify": "^15.1.0",
@@ -61,6 +60,13 @@
             "./browser-test"
         ]
     },
+    "keywords": [
+        "indexeddb",
+        "Indexed DB",
+        "IDB",
+        "storage",
+        "database"
+    ],
     "prettier": {
         "printWidth": 80,
         "tabWidth": 4,
