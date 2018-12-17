@@ -1,3 +1,3 @@
-# Jest caveat
+# Contributors notes
 
-Promise rejection must be handled, otherwise test will be mark as failure.
+- Jest caveat: Promise rejection must be handled, otherwise test will be mark as failure.
