@@ -107,7 +107,11 @@ describe("Trasaction handling", () => {
 
     test("When IDBDatabase.trasaction() call results in error, it should close the previous connection and re-establish a new connection.", async () => {
         expect.assertions(3)
-        const { database, transactionMockImpl, fulfillOpenReq } = generateIDBMock()
+        const {
+            database,
+            transactionMockImpl,
+            fulfillOpenReq
+        } = generateIDBMock()
 
         const idb = new IDBStorage({ name: "jest" })
 
@@ -152,7 +156,11 @@ describe("Trasaction handling", () => {
 
     test("When first transaction() call fails, the subsequent pending call should failed as well", async () => {
         expect.assertions(3)
-        const { database, transactionMockImpl, fulfillOpenReq } = generateIDBMock()
+        const {
+            database,
+            transactionMockImpl,
+            fulfillOpenReq
+        } = generateIDBMock()
 
         const idb = new IDBStorage({ name: "jest" })
 
@@ -174,5 +182,26 @@ describe("Trasaction handling", () => {
         await expect(r1).rejects.toEqual(new Error("InvalidStateError"))
         await expect(r2).rejects.toEqual(new Error("InvalidStateError"))
         await expect(r3).rejects.toEqual(new Error("InvalidStateError"))
+    })
+})
+
+describe("IDBStorage: Misc", () => {
+    it("should close connection onversionchange event", async () => {
+        expect.assertions(2)
+        const { database, fulfillOpenReq } = generateIDBMock()
+
+        const idb = new IDBStorage({ name: "jest" })
+        idb.setItem("a", 3)
+        await waitForNthCalls(window.indexedDB.open, 1)
+        fulfillOpenReq()
+
+        await waitForNthCalls(database.transaction, 1)
+        expect(database.onversionchange).toBeDefined()
+
+        const closeCall = waitForNthCalls(database.close, 1)
+        database.onversionchange()
+        await closeCall
+
+        expect(database.close).toHaveBeenCalledTimes(1)
     })
 })
