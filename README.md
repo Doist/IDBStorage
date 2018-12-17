@@ -1,5 +1,7 @@
 # IDBStorage
 
+[![Build Status](https://travis-ci.org/stkao05/IDBStorage.svg?branch=master)](https://travis-ci.org/stkao05/IDBStorage)
+
 IDBStorage is a key-value asynchronous storage that uses indexedDB as underlaying storage.
 
 [Why another key-val IndexedDB library?](https://github.com/Doist/IDBStorage#motivations)
