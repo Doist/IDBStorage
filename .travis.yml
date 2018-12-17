@@ -1,7 +1,10 @@
 language: node_js
 node_js:
       - "node"
-script: ./node_modules/.bin/karma start browser-test/karma.config.js --single-run
+script:
+    - npm run lint
+    - npm run test
+    - npm run jest
 before_install:
     - export DISPLAY=:99.0
     - sh -e /etc/init.d/xvfb start

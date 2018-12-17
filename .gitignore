@@ -1,5 +1,2 @@
 node_modules
-browserstack.json
-notes.md
-test/.cache
-test/dist
+browser-test/IDBStorage.spec.dist.js
