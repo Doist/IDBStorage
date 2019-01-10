@@ -1,5 +1,37 @@
 # Contributors notes
 
+
+## Note indexedDB
+
+__Transaction creation order__
+Ordering of transaction creation calls (`IDBDatabase.transaction()`) determines the ordering
+of execution of each operation.
+
+
+__Transaction lifetime__
+Each transaction has a lifetime (which determines its `active` flag). When should a transaction be marked
+as inactive is up to each browser vendor to decide, as it isn't part of W3C spec.
+
+For WebKit browser (i.e. Safari), the transaction lifetime is associated with the event loop execution context.
+A transaction will be marked as inactive once the execution of call stack which contains the transaction creation call
+has finished.
+
+i.e.
+
+```
+const tx = db.transaction()
+
+setTimeout(() => {
+    // At this point, trasaction has become inactive, and this call
+    // will result in error
+    tx.objectStore("test").put("foo", 1)
+}, 1000)
+```
+
+
+
+
+
 ## Testing
 Two sets of the test have been set up, in-browser tests, and unit tests.
 

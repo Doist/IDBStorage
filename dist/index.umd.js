@@ -10,17 +10,21 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var STORE_NAME = "keyvalue";
-
 var IDBStorage = function () {
     function IDBStorage() {
         var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
             _ref$name = _ref.name,
-            name = _ref$name === undefined ? "IDBStorage" : _ref$name;
+            name = _ref$name === undefined ? "IDBStorage" : _ref$name,
+            _ref$storeName = _ref.storeName,
+            storeName = _ref$storeName === undefined ? "keyvalue" : _ref$storeName,
+            _ref$version = _ref.version,
+            version = _ref$version === undefined ? 1 : _ref$version;
 
         _classCallCheck(this, IDBStorage);
 
         this.name = name;
+        this.storeName = storeName;
+        this.version = version;
         this.db = null;
         this.opening = null;
         this.pendingTX = [];
@@ -28,60 +32,63 @@ var IDBStorage = function () {
 
     _createClass(IDBStorage, [{
         key: "transaction",
-        value: function transaction(mode) {
+        value: function transaction(_ref2) {
             var _this = this;
 
-            return new Promise(function (resolve, reject) {
-                if (_this.db) {
+            var mode = _ref2.mode,
+                success = _ref2.success,
+                error = _ref2.error;
+
+            if (this.db) {
+                try {
+                    var tx = this.db.transaction([this.storeName], mode);
+                    success(tx);
+                } catch (e) {
+                    error(e);
+                    this.close();
+                }
+                return;
+            }
+
+            this.pendingTX.push([mode, success, error]);
+
+            if (this.opening) return;
+
+            this.opening = openIDBConnection(this.name, this.storeName, this.version).then(function (db) {
+                _this.opening = null;
+                _this.db = db;
+                _this.db.onversionchange = function () {
+                    return _this.close();
+                };
+
+                var failed = void 0;
+                _this.pendingTX.forEach(function (_ref3) {
+                    var _ref4 = _slicedToArray(_ref3, 3),
+                        mode = _ref4[0],
+                        success = _ref4[1],
+                        error = _ref4[2];
+
+                    if (failed) return error(failed);
+
                     try {
-                        var tx = _this.db.transaction([STORE_NAME], mode);
-                        resolve(tx);
+                        var _tx = _this.db.transaction([_this.storeName], mode);
+                        success(_tx);
                     } catch (e) {
-                        reject(e);
+                        failed = e;
+                        error(e);
                         _this.close();
                     }
-                    return;
-                }
-
-                _this.pendingTX.push([mode, resolve, reject]);
-
-                if (_this.opening) return;
-
-                _this.opening = openIDBConnection(_this.name, STORE_NAME).then(function (db) {
-                    _this.db = db;
-                    _this.db.onversionchange = function () {
-                        return _this.close();
-                    };
-
-                    var failed = void 0;
-                    _this.pendingTX.forEach(function (_ref2) {
-                        var _ref3 = _slicedToArray(_ref2, 3),
-                            mode = _ref3[0],
-                            resolve = _ref3[1],
-                            reject = _ref3[2];
-
-                        if (failed) return reject(failed);
-
-                        try {
-                            var _tx = _this.db.transaction([STORE_NAME], mode);
-                            resolve(_tx);
-                        } catch (e) {
-                            failed = e;
-                            reject(e);
-                            _this.close();
-                        }
-                    });
-                }).catch(function (e) {
-                    _this.pendingTX.forEach(function (_ref4) {
-                        var _ref5 = _slicedToArray(_ref4, 3),
-                            reject = _ref5[2];
-
-                        return reject(e);
-                    });
-                }).finally(function () {
-                    _this.opening = null;
-                    _this.pendingTX = [];
                 });
+                _this.pendingTX = [];
+            }).catch(function (e) {
+                _this.opening = null;
+                _this.pendingTX.forEach(function (_ref5) {
+                    var _ref6 = _slicedToArray(_ref5, 3),
+                        error = _ref6[2];
+
+                    return error(e);
+                });
+                _this.pendingTX = [];
             });
         }
     }, {
@@ -95,18 +102,26 @@ var IDBStorage = function () {
     }, {
         key: "setItem",
         value: function setItem(key, value) {
-            return this.transaction("readwrite").then(function (tx) {
-                return new Promise(function (resolve, reject) {
-                    try {
-                        var req = tx.objectStore(STORE_NAME).put(value, key);
-                        tx.oncomplete = function () {
-                            return resolve(value);
-                        };
-                        tx.onerror = tx.onabort = function () {
-                            return reject(req.error ? req.error : tx.error);
-                        };
-                    } catch (e) {
-                        reject(e);
+            var _this2 = this;
+
+            return new Promise(function (resolve, reject) {
+                _this2.transaction({
+                    mode: "readwrite",
+                    success: function success(tx) {
+                        try {
+                            var req = tx.objectStore(_this2.storeName).put(value, key);
+                            tx.oncomplete = function () {
+                                return resolve(value);
+                            };
+                            tx.onerror = tx.onabort = function () {
+                                return reject(req.error ? req.error : tx.error);
+                            };
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                    error: function error(e) {
+                        return reject(e);
                     }
                 });
             });
@@ -114,18 +129,26 @@ var IDBStorage = function () {
     }, {
         key: "getItem",
         value: function getItem(key) {
-            return this.transaction("readonly").then(function (tx) {
-                return new Promise(function (resolve, reject) {
-                    try {
-                        var req = tx.objectStore(STORE_NAME).get(key);
-                        tx.oncomplete = function () {
-                            return resolve(req.result);
-                        };
-                        tx.onerror = tx.onabort = function () {
-                            return reject(req.error ? req.error : tx.error);
-                        };
-                    } catch (e) {
-                        reject(e);
+            var _this3 = this;
+
+            return new Promise(function (resolve, reject) {
+                _this3.transaction({
+                    mode: "readonly",
+                    success: function success(tx) {
+                        try {
+                            var req = tx.objectStore(_this3.storeName).get(key);
+                            tx.oncomplete = function () {
+                                return resolve(req.result);
+                            };
+                            tx.onerror = tx.onabort = function () {
+                                return reject(req.error ? req.error : tx.error);
+                            };
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                    error: function error(e) {
+                        return reject(e);
                     }
                 });
             });
@@ -133,18 +156,26 @@ var IDBStorage = function () {
     }, {
         key: "removeItem",
         value: function removeItem(key) {
-            return this.transaction("readwrite").then(function (tx) {
-                return new Promise(function (resolve, reject) {
-                    try {
-                        var req = tx.objectStore(STORE_NAME).delete(key);
-                        tx.oncomplete = function () {
-                            return resolve();
-                        };
-                        tx.onerror = tx.onabort = function () {
-                            return reject(req.error ? req.error : tx.error);
-                        };
-                    } catch (e) {
-                        reject(e);
+            var _this4 = this;
+
+            return new Promise(function (resolve, reject) {
+                _this4.transaction({
+                    mode: "readwrite",
+                    success: function success(tx) {
+                        try {
+                            var req = tx.objectStore(_this4.storeName).delete(key);
+                            tx.oncomplete = function () {
+                                return resolve();
+                            };
+                            tx.onerror = tx.onabort = function () {
+                                return reject(req.error ? req.error : tx.error);
+                            };
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                    error: function error(e) {
+                        return reject(e);
                     }
                 });
             });
@@ -152,18 +183,26 @@ var IDBStorage = function () {
     }, {
         key: "clear",
         value: function clear() {
-            return this.transaction("readwrite").then(function (tx) {
-                return new Promise(function (resolve, reject) {
-                    try {
-                        var req = tx.objectStore(STORE_NAME).clear();
-                        tx.oncomplete = function () {
-                            return resolve();
-                        };
-                        tx.onerror = tx.onabort = function () {
-                            return reject(req.error ? req.error : tx.error);
-                        };
-                    } catch (e) {
-                        reject(e);
+            var _this5 = this;
+
+            return new Promise(function (resolve, reject) {
+                _this5.transaction({
+                    mode: "readwrite",
+                    success: function success(tx) {
+                        try {
+                            var req = tx.objectStore(_this5.storeName).clear();
+                            tx.oncomplete = function () {
+                                return resolve();
+                            };
+                            tx.onerror = tx.onabort = function () {
+                                return reject(req.error ? req.error : tx.error);
+                            };
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                    error: function error(e) {
+                        return reject(e);
                     }
                 });
             });
@@ -171,18 +210,26 @@ var IDBStorage = function () {
     }, {
         key: "length",
         value: function length() {
-            return this.transaction("readonly").then(function (tx) {
-                return new Promise(function (resolve, reject) {
-                    try {
-                        var req = tx.objectStore(STORE_NAME).count();
-                        tx.oncomplete = function () {
-                            return resolve(req.result);
-                        };
-                        tx.onerror = tx.onabort = function () {
-                            return reject(req.error ? req.error : tx.error);
-                        };
-                    } catch (e) {
-                        reject(e);
+            var _this6 = this;
+
+            return new Promise(function (resolve, reject) {
+                _this6.transaction({
+                    mode: "readonly",
+                    success: function success(tx) {
+                        try {
+                            var req = tx.objectStore(_this6.storeName).count();
+                            tx.oncomplete = function () {
+                                return resolve(req.result);
+                            };
+                            tx.onerror = tx.onabort = function () {
+                                return reject(req.error ? req.error : tx.error);
+                            };
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                    error: function error(e) {
+                        return reject(e);
                     }
                 });
             });
@@ -190,10 +237,10 @@ var IDBStorage = function () {
     }, {
         key: "deleteDatabase",
         value: function deleteDatabase() {
-            var _this2 = this;
+            var _this7 = this;
 
             return new Promise(function (resolve, reject) {
-                var req = window.indexedDB.deleteDatabase(_this2.name);
+                var req = window.indexedDB.deleteDatabase(_this7.name);
                 req.onsuccess = function () {
                     return resolve();
                 };
@@ -224,10 +271,10 @@ var IDBStorage = function () {
 
 
 exports.default = IDBStorage;
-var openIDBConnection = function openIDBConnection(name, storeName) {
+var openIDBConnection = function openIDBConnection(name, storeName, version) {
     return new Promise(function (resolve, reject) {
         try {
-            var req = window.indexedDB.open(name, 1);
+            var req = window.indexedDB.open(name, version);
             req.onupgradeneeded = function () {
                 var db = req.result;
                 db.onerror = function (ev) {

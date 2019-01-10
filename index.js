@@ -1,57 +1,75 @@
-const STORE_NAME = "keyvalue"
-
 export default class IDBStorage {
-    constructor({ name = "IDBStorage" } = {}) {
+    /*
+     *  In the usual usage of IDBStorage, store name and version
+     *  nubmer should not be configurable, or otherwise it could
+     *  easily result in DB version error. It is exposed as a hidden
+     *  setting for dev who are familier with indexedDB and have
+     *  special need for a different value
+     *
+     * @param {string} name
+     * @param {string} _storeName
+     * @param {string} _version
+     */
+    constructor({
+        name = "IDBStorage",
+        _storeName = "keyvalue",
+        _version = 1
+    } = {}) {
         this.name = name
         this.db = null
         this.opening = null
         this.pendingTX = []
+
+        this.storeName = _storeName
+        this.version = _version
     }
 
-    transaction(mode) {
-        return new Promise((resolve, reject) => {
-            if (this.db) {
-                try {
-                    const tx = this.db.transaction([STORE_NAME], mode)
-                    resolve(tx)
-                } catch (e) {
-                    reject(e)
-                    this.close()
-                }
-                return
+    transaction({ mode, success, error }) {
+        if (this.db) {
+            try {
+                const tx = this.db.transaction([this.storeName], mode)
+                success(tx)
+            } catch (e) {
+                error(e)
+                this.close()
             }
+            return
+        }
 
-            this.pendingTX.push([mode, resolve, reject])
+        this.pendingTX.push([mode, success, error])
 
-            if (this.opening) return
+        if (this.opening) return
 
-            this.opening = openIDBConnection(this.name, STORE_NAME)
-                .then(db => {
-                    this.db = db
-                    this.db.onversionchange = () => this.close()
+        this.opening = openIDBConnection(
+            this.name,
+            this.storeName,
+            this.version
+        )
+            .then(db => {
+                this.opening = null
+                this.db = db
+                this.db.onversionchange = () => this.close()
 
-                    let failed
-                    this.pendingTX.forEach(([mode, resolve, reject]) => {
-                        if (failed) return reject(failed)
+                let failed
+                this.pendingTX.forEach(([mode, success, error]) => {
+                    if (failed) return error(failed)
 
-                        try {
-                            const tx = this.db.transaction([STORE_NAME], mode)
-                            resolve(tx)
-                        } catch (e) {
-                            failed = e
-                            reject(e)
-                            this.close()
-                        }
-                    })
+                    try {
+                        const tx = this.db.transaction([this.storeName], mode)
+                        success(tx)
+                    } catch (e) {
+                        failed = e
+                        error(e)
+                        this.close()
+                    }
                 })
-                .catch(e => {
-                    this.pendingTX.forEach(([, , reject]) => reject(e))
-                })
-                .finally(() => {
-                    this.opening = null
-                    this.pendingTX = []
-                })
-        })
+                this.pendingTX = []
+            })
+            .catch(e => {
+                this.opening = null
+                this.pendingTX.forEach(([, , error]) => error(e))
+                this.pendingTX = []
+            })
     }
 
     close() {
@@ -62,76 +80,98 @@ export default class IDBStorage {
     }
 
     setItem(key, value) {
-        return this.transaction("readwrite").then(tx => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const req = tx.objectStore(STORE_NAME).put(value, key)
-                    tx.oncomplete = () => resolve(value)
-                    tx.onerror = tx.onabort = () =>
-                        reject(req.error ? req.error : tx.error)
-                } catch (e) {
-                    reject(e)
-                }
+        return new Promise((resolve, reject) => {
+            this.transaction({
+                mode: "readwrite",
+                success: tx => {
+                    try {
+                        const req = tx
+                            .objectStore(this.storeName)
+                            .put(value, key)
+                        tx.oncomplete = () => resolve(value)
+                        tx.onerror = tx.onabort = () =>
+                            reject(req.error ? req.error : tx.error)
+                    } catch (e) {
+                        reject(e)
+                    }
+                },
+                error: e => reject(e)
             })
         })
     }
 
     getItem(key) {
-        return this.transaction("readonly").then(tx => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const req = tx.objectStore(STORE_NAME).get(key)
-                    tx.oncomplete = () => resolve(req.result)
-                    tx.onerror = tx.onabort = () =>
-                        reject(req.error ? req.error : tx.error)
-                } catch (e) {
-                    reject(e)
-                }
+        return new Promise((resolve, reject) => {
+            this.transaction({
+                mode: "readonly",
+                success: tx => {
+                    try {
+                        const req = tx.objectStore(this.storeName).get(key)
+                        tx.oncomplete = () => resolve(req.result)
+                        tx.onerror = tx.onabort = () =>
+                            reject(req.error ? req.error : tx.error)
+                    } catch (e) {
+                        reject(e)
+                    }
+                },
+                error: e => reject(e)
             })
         })
     }
 
     removeItem(key) {
-        return this.transaction("readwrite").then(tx => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const req = tx.objectStore(STORE_NAME).delete(key)
-                    tx.oncomplete = () => resolve()
-                    tx.onerror = tx.onabort = () =>
-                        reject(req.error ? req.error : tx.error)
-                } catch (e) {
-                    reject(e)
-                }
+        return new Promise((resolve, reject) => {
+            this.transaction({
+                mode: "readwrite",
+                success: tx => {
+                    try {
+                        const req = tx.objectStore(this.storeName).delete(key)
+                        tx.oncomplete = () => resolve()
+                        tx.onerror = tx.onabort = () =>
+                            reject(req.error ? req.error : tx.error)
+                    } catch (e) {
+                        reject(e)
+                    }
+                },
+                error: e => reject(e)
             })
         })
     }
 
     clear() {
-        return this.transaction("readwrite").then(tx => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const req = tx.objectStore(STORE_NAME).clear()
-                    tx.oncomplete = () => resolve()
-                    tx.onerror = tx.onabort = () =>
-                        reject(req.error ? req.error : tx.error)
-                } catch (e) {
-                    reject(e)
-                }
+        return new Promise((resolve, reject) => {
+            this.transaction({
+                mode: "readwrite",
+                success: tx => {
+                    try {
+                        const req = tx.objectStore(this.storeName).clear()
+                        tx.oncomplete = () => resolve()
+                        tx.onerror = tx.onabort = () =>
+                            reject(req.error ? req.error : tx.error)
+                    } catch (e) {
+                        reject(e)
+                    }
+                },
+                error: e => reject(e)
             })
         })
     }
 
     length() {
-        return this.transaction("readonly").then(tx => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const req = tx.objectStore(STORE_NAME).count()
-                    tx.oncomplete = () => resolve(req.result)
-                    tx.onerror = tx.onabort = () =>
-                        reject(req.error ? req.error : tx.error)
-                } catch (e) {
-                    reject(e)
-                }
+        return new Promise((resolve, reject) => {
+            this.transaction({
+                mode: "readonly",
+                success: tx => {
+                    try {
+                        const req = tx.objectStore(this.storeName).count()
+                        tx.oncomplete = () => resolve(req.result)
+                        tx.onerror = tx.onabort = () =>
+                            reject(req.error ? req.error : tx.error)
+                    } catch (e) {
+                        reject(e)
+                    }
+                },
+                error: e => reject(e)
             })
         })
     }
@@ -156,10 +196,10 @@ export default class IDBStorage {
  * Open an IDB connection
  * @param {Promise} IDBDatabase
  */
-const openIDBConnection = (name, storeName) => {
+const openIDBConnection = (name, storeName, version) => {
     return new Promise((resolve, reject) => {
         try {
-            const req = window.indexedDB.open(name, 1)
+            const req = window.indexedDB.open(name, version)
             req.onupgradeneeded = () => {
                 const db = req.result
                 db.onerror = ev => reject(ev)
