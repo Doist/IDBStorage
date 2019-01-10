@@ -16,12 +16,11 @@ export default class IDBStorage {
         _version = 1
     } = {}) {
         this.name = name
+        this.storeName = _storeName
+        this.version = _version
         this.db = null
         this.opening = null
         this.pendingTX = []
-
-        this.storeName = _storeName
-        this.version = _version
     }
 
     transaction({ mode, success, error }) {

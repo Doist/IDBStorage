@@ -11,20 +11,31 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var IDBStorage = function () {
+    /*
+     *  In the usual usage of IDBStorage, store name and version
+     *  nubmer should not be configurable, or otherwise it could
+     *  easily result in DB version error. It is exposed as a hidden
+     *  setting for dev who are familier with indexedDB and have
+     *  special need for a different value
+     *
+     * @param {string} name
+     * @param {string} _storeName
+     * @param {string} _version
+     */
     function IDBStorage() {
         var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
             _ref$name = _ref.name,
             name = _ref$name === undefined ? "IDBStorage" : _ref$name,
-            _ref$storeName = _ref.storeName,
-            storeName = _ref$storeName === undefined ? "keyvalue" : _ref$storeName,
-            _ref$version = _ref.version,
-            version = _ref$version === undefined ? 1 : _ref$version;
+            _ref$_storeName = _ref._storeName,
+            _storeName = _ref$_storeName === undefined ? "keyvalue" : _ref$_storeName,
+            _ref$_version = _ref._version,
+            _version = _ref$_version === undefined ? 1 : _ref$_version;
 
         _classCallCheck(this, IDBStorage);
 
         this.name = name;
-        this.storeName = storeName;
-        this.version = version;
+        this.storeName = _storeName;
+        this.version = _version;
         this.db = null;
         this.opening = null;
         this.pendingTX = [];
