@@ -21,12 +21,13 @@
     "module": "dist/index.esm.js",
     "scripts": {
         "lint": "eslint ./index.js",
-        "build-umd": "BABEL_ENV=umd babel index.js -o dist/index.umd.js",
-        "build-esm": "BABEL_ENV=esm babel index.js -o dist/index.esm.js",
-        "build": "npm run build-umd && npm run build-esm",
-        "pre-test": "browserify browser-test/IDBStorage.spec.js -o browser-test/IDBStorage.spec.dist.js -t babelify",
-        "test": "npm run pre-test && karma start browser-test/karma.config.js --single-run",
-        "jest": "jest"
+        "build:umd": "BABEL_ENV=umd babel index.js -o dist/index.umd.js",
+        "build:esm": "BABEL_ENV=esm babel index.js -o dist/index.esm.js",
+        "build:test": "browserify browser-test/IDBStorage.spec.js -o browser-test/IDBStorage.spec.dist.js -t babelify",
+        "build": "npm run build:umd && npm run build:esm && npm run build:test",
+        "test": "karma start browser-test/karma.config.js --single-run",
+        "jest": "jest",
+        "jest:debug": "node --inspect node_modules/.bin/jest --runInBand"
     },
     "babel": {
         "presets": [
@@ -84,5 +85,7 @@
         "url": "https://github.com/doist/IDBStorage/issues"
     },
     "homepage": "https://github.com/doist/IDBStorage#readme",
-    "dependencies": {}
+    "dependencies": {
+        "karma-safari-launcher": "^1.0.0"
+    }
 }

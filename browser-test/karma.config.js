@@ -4,6 +4,6 @@ module.exports = function(config) {
     files: ['./IDBStorage.spec.dist.js'],
     colors: true,
     logLevel: config.LOG_INFO,
-    browsers: ['ChromeHeadless']
+    browsers: ['ChromeHeadless', 'Safari']
   })
 }
