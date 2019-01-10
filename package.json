@@ -1,6 +1,6 @@
 {
     "name": "idbstorage",
-    "version": "0.0.2",
+    "version": "0.1.0",
     "description": "IndexedDB as key-value storage",
     "devDependencies": {
         "babel-cli": "^6.26.0",
