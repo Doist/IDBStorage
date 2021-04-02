@@ -69,13 +69,7 @@
         "storage",
         "database"
     ],
-    "prettier": {
-        "printWidth": 80,
-        "tabWidth": 4,
-        "semi": false,
-        "trailingComma": "none",
-        "bracketSpacing": true
-    },
+    "prettier": "@doist/prettier-config",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/doist/IDBStorage"
