@@ -3,6 +3,7 @@
     "version": "0.1.1",
     "description": "IndexedDB as key-value storage",
     "devDependencies": {
+        "@doist/prettier-config": "^3.0.5",
         "babel-cli": "^6.26.0",
         "babel-core": "^6.26.3",
         "babel-preset-env": "^1.6.1",
@@ -68,13 +69,7 @@
         "storage",
         "database"
     ],
-    "prettier": {
-        "printWidth": 80,
-        "tabWidth": 4,
-        "semi": false,
-        "trailingComma": "none",
-        "bracketSpacing": true
-    },
+    "prettier": "@doist/prettier-config",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/doist/IDBStorage"
