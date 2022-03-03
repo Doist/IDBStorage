@@ -1,6 +1,6 @@
 {
     "name": "idbstorage",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "IndexedDB as key-value storage",
     "devDependencies": {
         "@doist/prettier-config": "^3.0.5",
