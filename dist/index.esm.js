@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -25,9 +25,9 @@ var IDBStorage = function () {
     function IDBStorage() {
         var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
             _ref$name = _ref.name,
-            name = _ref$name === undefined ? "IDBStorage" : _ref$name,
+            name = _ref$name === undefined ? 'IDBStorage' : _ref$name,
             _ref$_storeName = _ref._storeName,
-            _storeName = _ref$_storeName === undefined ? "keyvalue" : _ref$_storeName,
+            _storeName = _ref$_storeName === undefined ? 'keyvalue' : _ref$_storeName,
             _ref$_version = _ref._version,
             _version = _ref$_version === undefined ? 1 : _ref$_version;
 
@@ -42,7 +42,7 @@ var IDBStorage = function () {
     }
 
     _createClass(IDBStorage, [{
-        key: "transaction",
+        key: 'transaction',
         value: function transaction(_ref2) {
             var _this = this;
 
@@ -69,6 +69,9 @@ var IDBStorage = function () {
                 _this.opening = null;
                 _this.db = db;
                 _this.db.onversionchange = function () {
+                    return _this.close();
+                };
+                _this.db.onclose = function () {
                     return _this.close();
                 };
 
@@ -103,7 +106,7 @@ var IDBStorage = function () {
             });
         }
     }, {
-        key: "close",
+        key: 'close',
         value: function close() {
             if (!this.db) return;
 
@@ -111,13 +114,13 @@ var IDBStorage = function () {
             this.db = null;
         }
     }, {
-        key: "setItem",
+        key: 'setItem',
         value: function setItem(key, value) {
             var _this2 = this;
 
             return new Promise(function (resolve, reject) {
                 _this2.transaction({
-                    mode: "readwrite",
+                    mode: 'readwrite',
                     success: function success(tx) {
                         try {
                             var req = tx.objectStore(_this2.storeName).put(value, key);
@@ -138,13 +141,13 @@ var IDBStorage = function () {
             });
         }
     }, {
-        key: "getItem",
+        key: 'getItem',
         value: function getItem(key) {
             var _this3 = this;
 
             return new Promise(function (resolve, reject) {
                 _this3.transaction({
-                    mode: "readonly",
+                    mode: 'readonly',
                     success: function success(tx) {
                         try {
                             var req = tx.objectStore(_this3.storeName).get(key);
@@ -165,13 +168,13 @@ var IDBStorage = function () {
             });
         }
     }, {
-        key: "removeItem",
+        key: 'removeItem',
         value: function removeItem(key) {
             var _this4 = this;
 
             return new Promise(function (resolve, reject) {
                 _this4.transaction({
-                    mode: "readwrite",
+                    mode: 'readwrite',
                     success: function success(tx) {
                         try {
                             var req = tx.objectStore(_this4.storeName).delete(key);
@@ -192,13 +195,13 @@ var IDBStorage = function () {
             });
         }
     }, {
-        key: "clear",
+        key: 'clear',
         value: function clear() {
             var _this5 = this;
 
             return new Promise(function (resolve, reject) {
                 _this5.transaction({
-                    mode: "readwrite",
+                    mode: 'readwrite',
                     success: function success(tx) {
                         try {
                             var req = tx.objectStore(_this5.storeName).clear();
@@ -219,13 +222,13 @@ var IDBStorage = function () {
             });
         }
     }, {
-        key: "length",
+        key: 'length',
         value: function length() {
             var _this6 = this;
 
             return new Promise(function (resolve, reject) {
                 _this6.transaction({
-                    mode: "readonly",
+                    mode: 'readonly',
                     success: function success(tx) {
                         try {
                             var req = tx.objectStore(_this6.storeName).count();
@@ -246,7 +249,7 @@ var IDBStorage = function () {
             });
         }
     }, {
-        key: "deleteDatabase",
+        key: 'deleteDatabase',
         value: function deleteDatabase() {
             var _this7 = this;
 
@@ -266,9 +269,9 @@ var IDBStorage = function () {
          */
 
     }, {
-        key: "supports",
+        key: 'supports',
         get: function get() {
-            return typeof indexedDB !== "undefined";
+            return typeof indexedDB !== 'undefined';
         }
     }]);
 

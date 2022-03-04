@@ -40,6 +40,7 @@ export default class IDBStorage {
                 this.opening = null
                 this.db = db
                 this.db.onversionchange = () => this.close()
+                this.db.onclose = () => this.close()
 
                 let failed
                 this.pendingTX.forEach(([mode, success, error]) => {
