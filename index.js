@@ -1,3 +1,5 @@
+const RETRYABLE_ERRORS = ['transaction timed out due to inactivity']
+
 export default class IDBStorage {
     /*
      *  In the usual usage of IDBStorage, store name and version
@@ -71,7 +73,7 @@ export default class IDBStorage {
         this.db = null
     }
 
-    setItem(key, value) {
+    setItem(key, value, retrying = false) {
         return new Promise((resolve, reject) => {
             this.transaction({
                 mode: 'readwrite',
@@ -79,7 +81,13 @@ export default class IDBStorage {
                     try {
                         const req = tx.objectStore(this.storeName).put(value, key)
                         tx.oncomplete = () => resolve(value)
-                        tx.onerror = tx.onabort = () => reject(req.error ? req.error : tx.error)
+                        tx.onerror = tx.onabort = () => {
+                            if (!retrying && this._shouldRetry(tx.error)) {
+                                return this.setItem(key, value, true)
+                            } else {
+                                reject(req.error ? req.error : tx.error)
+                            }
+                        }
                     } catch (e) {
                         reject(e)
                     }
@@ -167,6 +175,17 @@ export default class IDBStorage {
             req.onsuccess = () => resolve()
             req.onerror = (ev) => reject(ev)
         })
+    }
+
+    _shouldRetry(error) {
+        if (error && error.message) {
+            return RETRYABLE_ERRORS.some(
+                (message) =>
+                    error.message.toLowerCase().includes(message)
+            )
+        }
+
+        return false
     }
 
     /*
